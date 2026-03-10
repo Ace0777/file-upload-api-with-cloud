@@ -14,3 +14,8 @@ spring:
   properties:
     hibernate:
       dialect: org.hibernate.dialect.PostgreSQLDialect
+ aws:
+  access-key: ${AWS_ACCESS_KEY}
+  secret-key: ${AWS_SECRET_KEY}
+  region: sa-east-1
+  bucket: file-uploadace0777

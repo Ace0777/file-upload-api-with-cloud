@@ -29,5 +29,4 @@ public class FilesController {
     public ResponseEntity<List<FileMetadata>> findAll(){
         return ResponseEntity.ok(service.findAll());
     }
-
 }

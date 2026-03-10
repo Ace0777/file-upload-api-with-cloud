@@ -5,11 +5,11 @@ import br.com.ace.api.repository.FilesRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
+import software.amazon.awssdk.core.sync.RequestBody;
+import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -19,48 +19,55 @@ import java.util.UUID;
 public class FilesService {
 
     private final FilesRepository repository;
+    private final S3Client s3Client;
+    private final String bucketName = "file-uploadace0777";
 
     public void save(MultipartFile file){
 
         try {
-
             String originalName = file.getOriginalFilename();
             String uniqueName = UUID.randomUUID() + "-" + originalName;
 
-            Path uploadPath = getUploadDirectory();
-            Path filePath = uploadPath.resolve(uniqueName);
+            PutObjectRequest putObjectRequest = PutObjectRequest.builder()
+                    .bucket(bucketName)
+                    .key(uniqueName)
+                    .contentType(file.getContentType())
+                    .build();
 
-            Files.copy(file.getInputStream(), filePath);
+            s3Client.putObject(
+                    putObjectRequest,
+                    RequestBody.fromInputStream(file.getInputStream(), file.getSize())
+            );
+
+            String fileUrl = "https://" + bucketName + ".s3.sa-east-1.amazonaws.com/" + uniqueName;
 
             FileMetadata entity = new FileMetadata();
             entity.setFileName(originalName);
             entity.setSize(file.getSize());
-            entity.setPath(filePath.toString());
+            entity.setPath(fileUrl);
             entity.setCreatedAt(LocalDateTime.now());
 
             repository.save(entity);
-
-        } catch (IOException e) {
-            throw new RuntimeException("error");
+        }catch (IOException e){
+            throw new RuntimeException("s3 error", e);
         }
 
     }
-
 
     public List<FileMetadata> findAll(){
         return repository.findAll();
     }
 
 
-    private Path getUploadDirectory() throws IOException {
-
-        Path uploadPath = Paths.get("uploads");
-
-        if (!Files.exists(uploadPath)) {
-            Files.createDirectories(uploadPath);
-        }
-
-        return uploadPath;
-    }
+//    private Path getUploadDirectory() throws IOException {
+//
+//        Path uploadPath = Paths.get("uploads");
+//
+//        if (!Files.exists(uploadPath)) {
+//            Files.createDirectories(uploadPath);
+//        }
+//
+//        return uploadPath;
+//    }
 
 }
