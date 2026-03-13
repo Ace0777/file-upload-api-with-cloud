@@ -1,5 +1,6 @@
 package br.com.ace.api.service;
 
+import br.com.ace.api.config.S3Config;
 import br.com.ace.api.entity.FileMetadata;
 import br.com.ace.api.repository.FilesRepository;
 import lombok.RequiredArgsConstructor;
@@ -20,16 +21,15 @@ public class FilesService {
 
     private final FilesRepository repository;
     private final S3Client s3Client;
-    private final String bucketName = "file-uploadace0777";
+    private final S3Config s3Config;
 
-    public void save(MultipartFile file){
-
+    public void save(MultipartFile file) {
         try {
             String originalName = file.getOriginalFilename();
-            String uniqueName = UUID.randomUUID() + "-" + originalName;
+            String uniqueName = "uploads/" + UUID.randomUUID() + "-" + originalName;
 
             PutObjectRequest putObjectRequest = PutObjectRequest.builder()
-                    .bucket(bucketName)
+                    .bucket(s3Config.getBucketName())
                     .key(uniqueName)
                     .contentType(file.getContentType())
                     .build();
@@ -39,7 +39,8 @@ public class FilesService {
                     RequestBody.fromInputStream(file.getInputStream(), file.getSize())
             );
 
-            String fileUrl = "https://" + bucketName + ".s3.sa-east-1.amazonaws.com/" + uniqueName;
+            String fileUrl = "https://" + s3Config.getBucketName()
+                    + ".s3.sa-east-1.amazonaws.com/" + uniqueName;
 
             FileMetadata entity = new FileMetadata();
             entity.setFileName(originalName);
@@ -48,26 +49,13 @@ public class FilesService {
             entity.setCreatedAt(LocalDateTime.now());
 
             repository.save(entity);
-        }catch (IOException e){
-            throw new RuntimeException("s3 error", e);
-        }
 
+        } catch (IOException e) {
+            throw new RuntimeException("error", e);
+        }
     }
 
-    public List<FileMetadata> findAll(){
+    public List<FileMetadata> findAll() {
         return repository.findAll();
     }
-
-
-//    private Path getUploadDirectory() throws IOException {
-//
-//        Path uploadPath = Paths.get("uploads");
-//
-//        if (!Files.exists(uploadPath)) {
-//            Files.createDirectories(uploadPath);
-//        }
-//
-//        return uploadPath;
-//    }
-
 }
