@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout código
+      - name: Checkout code
         uses: actions/checkout@v3
 
       - name: Setup Java 17
@@ -25,7 +25,7 @@ jobs:
           chmod +x gradlew
           ./gradlew bootJar
 
-      - name: Deploy para EC2
+      - name: Deploy to EC2
         env:
           SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
           HOST: ${{ secrets.EC2_HOST }}
@@ -34,5 +34,13 @@ jobs:
           echo "$SSH_KEY" > key.pem
           chmod 600 key.pem
           scp -o StrictHostKeyChecking=no -i key.pem api/build/libs/api-0.0.1-SNAPSHOT.jar ec2-user@$HOST:~/app.jar
-          ssh -o StrictHostKeyChecking=no -i key.pem ec2-user@$HOST "pkill -f 'java -jar' || true && sleep 2 && export DB_PASSWORD=$DB_PASSWORD && nohup java -jar ~/app.jar > ~/app.log 2>&1 &"
+          ssh -o StrictHostKeyChecking=no -i key.pem ec2-user@$HOST "
+            pkill -f 'java -jar' || true
+            sleep 3
+            export DB_PASSWORD=$DB_PASSWORD
+            nohup java -jar ~/app.jar > ~/app.log 2>&1 &
+            disown
+            sleep 15
+            curl -s http://localhost:8080/api/files && echo 'API OK'
+          "
           rm key.pem
